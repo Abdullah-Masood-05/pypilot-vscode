@@ -1,0 +1,10 @@
+.vscode/**
+node_modules/**
+src/**
+build.ts
+bunfig.toml
+tsconfig.json
+.gitignore
+**/*.ts
+**/*.map
+bun.lockb

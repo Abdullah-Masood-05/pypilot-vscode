@@ -1,0 +1,13 @@
+# bunfig.toml — Bun workspace configuration for pypilot-vscode.
+
+[install]
+# Pin exact versions for reproducible CI installs.
+exact = true
+
+[install.cache]
+# Keep the global cache; don't disable it.
+disable = false
+
+[run]
+# No shell-level quoting surprises — Bun runs scripts directly.
+bun = true

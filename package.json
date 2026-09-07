@@ -1,0 +1,159 @@
+{
+  "name": "pypilot-vscode",
+  "displayName": "PyPilot",
+  "description": "Sets up Python environments, resolves version/hardware compatibility, and rescues from dependency hell — no AI, no API keys. Fast because it uses uv under the hood.",
+  "version": "0.1.0",
+  "publisher": "pypilot",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "python",
+    "virtualenv",
+    "uv",
+    "pip",
+    "mediapipe",
+    "pytorch",
+    "cuda",
+    "environment"
+  ],
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Abdullah-Masood-05/pypilot"
+  },
+  "activationEvents": [
+    "workspaceContains:**/*.py",
+    "workspaceContains:requirements.txt",
+    "workspaceContains:pyproject.toml",
+    "workspaceContains:environment.yml"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "pypilot.setup",
+        "title": "PyPilot: Set Up Environment",
+        "icon": "$(rocket)"
+      },
+      {
+        "command": "pypilot.doctor",
+        "title": "PyPilot: Doctor — Show Environment Report",
+        "icon": "$(search)"
+      },
+      {
+        "command": "pypilot.fixPython",
+        "title": "PyPilot: Fix Python Version",
+        "icon": "$(tools)"
+      },
+      {
+        "command": "pypilot.fixCuda",
+        "title": "PyPilot: Fix CUDA / PyTorch Build",
+        "icon": "$(circuit-board)"
+      },
+      {
+        "command": "pypilot.check",
+        "title": "PyPilot: Check Package Compatibility…",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "pypilot.install",
+        "title": "PyPilot: Install Package…",
+        "icon": "$(package)"
+      },
+      {
+        "command": "pypilot.updateData",
+        "title": "PyPilot: Update Bundled Data Tables",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "pypilot.migrateConda",
+        "title": "PyPilot: Migrate Conda environment.yml to pyproject.toml",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "pypilot.openReport",
+        "title": "PyPilot: Open Environment Report Panel",
+        "icon": "$(preview)"
+      }
+    ],
+    "configuration": {
+      "title": "PyPilot",
+      "properties": {
+        "pypilot.packageManager": {
+          "type": "string",
+          "enum": ["uv", "pip"],
+          "enumDescriptions": [
+            "Use uv (default, fastest). PyPilot manages the uv binary automatically.",
+            "Use pip + python -m venv. Never touches uv. Python must be installed manually."
+          ],
+          "default": "uv",
+          "description": "Package manager for environment creation and installs.",
+          "scope": "resource"
+        },
+        "pypilot.notifications": {
+          "type": "string",
+          "enum": ["all", "problems-only", "off"],
+          "enumDescriptions": [
+            "Toast for every finding, including informational notes.",
+            "Only toast for warnings and errors.",
+            "Suppress all automatic notifications."
+          ],
+          "default": "problems-only",
+          "description": "Controls when PyPilot shows automatic notifications on workspace open.",
+          "scope": "resource"
+        },
+        "pypilot.autoCheckOnOpen": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically scan the workspace when it is first opened.",
+          "scope": "resource"
+        },
+        "pypilot.dataRefreshDays": {
+          "type": "number",
+          "default": 7,
+          "minimum": 0,
+          "description": "How often (in days) to refresh bundled tables. 0 means fully offline.",
+          "scope": "resource"
+        }
+      }
+    },
+    "taskDefinitions": [
+      {
+        "type": "pypilot",
+        "required": ["task"],
+        "properties": {
+          "task": {
+            "type": "string",
+            "description": "The pypilot task to run.",
+            "enum": ["setup", "doctor", "fix python", "fix cuda", "update-data", "migrate-conda"]
+          },
+          "package": {
+            "type": "string",
+            "description": "Package name (for install / check tasks)."
+          }
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "bun run build",
+    "build": "bun run build.ts",
+    "watch": "bun run build.ts --watch",
+    "lint": "bunx @biomejs/biome check src",
+    "package": "bunx @vscode/vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0",
+    "@vscode/vsce": "^2.24.0"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  }
+}
