@@ -2,7 +2,8 @@
   "name": "pypilot-vscode",
   "displayName": "PyPilot",
   "description": "Sets up Python environments, resolves version and hardware compatibility without external AI or API keys.",
-  "version": "0.1.0",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
   "publisher": "pypilot",
   "engines": {
     "vscode": "^1.85.0"
@@ -24,7 +25,7 @@
   "icon": "media/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Abdullah-Masood-05/pypilot"
+    "url": "https://github.com/Abdullah-Masood-05/pypilot-vscode"
   },
   "activationEvents": [
     "workspaceContains:**/*.py",
@@ -141,6 +142,7 @@
     ]
   },
   "scripts": {
+    "typecheck": "tsc --noEmit",
     "build": "bun run build.ts",
     "watch": "bun run build.ts --watch",
     "lint": "bunx @biomejs/biome check src",

@@ -11,5 +11,6 @@
     "sourceMap": true,
     "resolveJsonModule": true
   },
-  "exclude": ["node_modules", ".vscode-test"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", ".vscode-test", "out", "build.ts"]
 }

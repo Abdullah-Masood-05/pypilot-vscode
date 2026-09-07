@@ -70,27 +70,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       ),
     },
     outputChannelName: "PyPilot",
-    // Middleware: intercept showMessageRequest (LSP toasts) so we can render
-    // them as VS Code-native information messages with action buttons instead
-    // of the plain text the default renderer produces.
-    middleware: {
-      window: {
-        async showMessageRequest(params, next) {
-          const actions = params.actions?.map((a) => a.title) ?? [];
-          if (actions.length === 0) {
-            vscode.window.showInformationMessage(params.message);
-            return null;
-          }
-
-          const chosen = await vscode.window.showInformationMessage(
-            params.message,
-            { modal: false },
-            ...actions
-          );
-          return chosen ? { title: chosen } : null;
-        },
-      },
-    },
   };
 
   client = new LanguageClient(

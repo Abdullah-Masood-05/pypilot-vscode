@@ -8,3 +8,6 @@ tsconfig.json
 **/*.ts
 **/*.map
 bun.lockb
+bun.lock
+.github/**
+*.vsix

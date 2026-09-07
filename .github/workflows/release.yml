@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and Release Extension
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Build extension
+        run: bun run build
+
+      - name: Package VSIX
+        run: bun run package
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "*.vsix"
+          generate_release_notes: true
+
+      - name: Publish to Visual Studio Marketplace
+        if: env.VSCE_PAT != ''
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: bunx @vscode/vsce publish --no-dependencies -p ${{ secrets.VSCE_PAT }}
+
+      - name: Publish to Open VSX Registry
+        if: env.OVSX_PAT != ''
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: bunx ovsx publish *.vsix -p ${{ secrets.OVSX_PAT }}

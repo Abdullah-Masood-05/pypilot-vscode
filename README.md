@@ -93,4 +93,4 @@ bun run package
 
 ## License
 
-AGPL-3.0-or-later. See the project repository license for details.
+Apache-2.0. See the project repository license for details.

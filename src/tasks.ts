@@ -86,7 +86,7 @@ function buildTask(def: PyPilotTaskDefinition): vscode.Task {
   };
 
   // Never allow two setups to run simultaneously.
-  task.runOptions = { runOn: vscode.TaskRunOn.Default };
+  task.runOptions = { reevaluateOnRerun: true };
 
   return task;
 }
