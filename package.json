@@ -4,7 +4,7 @@
   "description": "Sets up Python environments, resolves version and hardware compatibility without external AI or API keys.",
   "version": "1.0.0",
   "license": "Apache-2.0",
-  "publisher": "pypilot",
+  "publisher": "AbdullahMasood-005",
   "engines": {
     "vscode": "^1.85.0"
   },
