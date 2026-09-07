@@ -1,109 +1,92 @@
 # PyPilot for VS Code
 
-> Sets up Python environments, resolves version/hardware compatibility, and rescues newcomers from dependency hell — **no AI, no API keys, near-zero latency.**
+PyPilot inspects Python projects, figures out which Python versions your dependencies actually support, and creates a working virtual environment. It resolves driver and CUDA compatibility for PyTorch or TensorFlow, checks package wheels on PyPI, and flags broken imports directly in the editor without external API calls.
 
-Identical engine to [PyPilot for Zed](https://github.com/Abdullah-Masood-05/pypilot), now with VS Code-native surfaces: command palette, status bar, progress spinners, interactive report panel, and integrated tasks.
-
----
+This extension runs the same native Rust engine as [PyPilot for Zed](https://github.com/Abdullah-Masood-05/pypilot), integrated with VS Code surfaces: the command palette, status bar, progress indicators, interactive doctor report panel, and workspace tasks.
 
 ## Features
 
-| What | How |
-|---|---|
-| **Automatic environment setup** | `uv init` + `uv add` when no `pyproject.toml` exists; `pip freeze > requirements.txt` in pip mode |
-| **Python version resolution** | Reads wheel tags + `requires_python` from PyPI; picks the Python all dependencies agree on |
-| **Hardware / CUDA matching** | Detects NVIDIA driver, maps it to the right `torch`/`tensorflow` CUDA build |
-| **Live import diagnostics** | Red squiggles on `import mediapipe` if mediapipe has no wheel for your Python — with one-click fix |
-| **Workspace onboarding** | On open: silent scan → VS Code popup with **Fix Everything / Show Details / Ignore** |
-| **Status bar** | `🐍 3.12 ✓` when healthy · `⚠ Fix` when broken · clickable |
-| **Command palette** | All actions via `Ctrl+Shift+P` → `PyPilot:…` |
-| **Integrated tasks** | `Tasks: Run Task` → `PyPilot: Set Up Environment`, `Doctor`, `Fix Python Version`, etc. |
-| **Interactive report panel** | Doctor output as rich HTML with color-coded finding cards and action buttons |
-
----
+- **Environment setup**: Runs `uv init` and `uv add` when no `pyproject.toml` exists. In pip mode, records installations using `pip freeze > requirements.txt`.
+- **Python version resolution**: Evaluates PyPI wheel availability against `requires_python` to find an interpreter version that satisfies all dependencies.
+- **Hardware matching**: Inspects host NVIDIA drivers via `nvidia-smi` and aligns `torch` or `tensorflow` with the correct CUDA runtime wheel.
+- **Import diagnostics**: Flags missing or incompatible package imports in open files, with quick fixes to install or resolve them.
+- **Onboarding prompt**: Scans opened folders and displays an actionable alert when environment issues need attention.
+- **Status bar**: Displays interpreter state in the status bar with quick access to the report panel.
+- **Task integration**: Provides workspace task definitions for environment bootstrap, health checks, and package maintenance.
+- **Report panel**: Renders the doctor diagnostics report in an interactive webview panel.
 
 ## Requirements
 
-- VS Code 1.85 or later
-- Internet access on first install (to download the `pypilot` helper binary — ~3 MB, once)
-- No Python pre-install required in `uv` mode — PyPilot fetches the right Python for you
+- VS Code 1.85 or later.
+- Network access during initial startup to download the native `pypilot` helper binary (approximately 3 MB).
+- Python does not need to be installed beforehand when using `uv` mode; `uv` downloads required interpreters directly.
 
----
+## Getting started
 
-## Getting Started
-
-1. Open a Python project folder in VS Code
-2. PyPilot auto-activates and scans the workspace
-3. If something is wrong you get a popup — click **Fix Everything**
-4. Done. The environment is now on the Python version your dependencies actually support
-
----
+1. Open a Python project directory in VS Code.
+2. PyPilot activates and scans the environment.
+3. If an issue is found, a prompt appears with options to run the automatic fix or inspect the report.
+4. The environment is configured on the Python version supported by your project dependencies.
 
 ## Commands
 
-| Command | Description |
+| Command | Action |
 |---|---|
-| `PyPilot: Set Up Environment` | Full bootstrap: uv → correct Python → venv → deps |
-| `PyPilot: Doctor — Show Environment Report` | Read-only scan; opens the interactive report panel |
-| `PyPilot: Fix Python Version` | Recomputes the intersection, rebuilds the venv |
-| `PyPilot: Fix CUDA / PyTorch Build` | Re-pins torch/TF to the build matching your driver |
-| `PyPilot: Check Package Compatibility…` | Input box → compatibility report for one package |
-| `PyPilot: Install Package…` | Input box → install + record in pyproject.toml |
-| `PyPilot: Update Bundled Data Tables` | Force-refresh NVIDIA/framework/import-map JSONs |
-| `PyPilot: Migrate Conda environment.yml → pyproject.toml` | Translates your conda env |
-
----
+| `PyPilot: Set Up Environment` | Bootstraps the environment, installs Python if needed, and installs dependencies |
+| `PyPilot: Doctor: Show Environment Report` | Runs a health check and displays the interactive report panel |
+| `PyPilot: Fix Python Version` | Recalculates compatible versions and rebuilds the virtual environment |
+| `PyPilot: Fix CUDA / PyTorch Build` | Re-pins machine learning dependencies to the driver-supported build |
+| `PyPilot: Check Package Compatibility...` | Checks whether a specific package runs on the current Python version |
+| `PyPilot: Install Package...` | Installs a package and updates the project manifest |
+| `PyPilot: Update Bundled Data Tables` | Updates cached hardware and framework compatibility data |
+| `PyPilot: Migrate Conda environment.yml to pyproject.toml` | Translates conda environment definitions into pyproject.toml |
 
 ## Settings
 
 | Setting | Default | Description |
 |---|---|---|
-| `pypilot.packageManager` | `"uv"` | `"uv"` or `"pip"`. uv mode never requires a prior install. |
-| `pypilot.notifications` | `"problems-only"` | `"all"`, `"problems-only"`, or `"off"` |
-| `pypilot.autoCheckOnOpen` | `true` | Run workspace scan when a folder is opened |
-| `pypilot.dataRefreshDays` | `7` | TTL for bundled table refresh; `0` = fully offline |
-
----
+| `pypilot.packageManager` | `"uv"` | Selects `uv` or `pip`. |
+| `pypilot.notifications` | `"problems-only"` | Configures notification verbosity: `all`, `problems-only`, or `off`. |
+| `pypilot.autoCheckOnOpen` | `true` | Automatically checks the environment when opening a workspace. |
+| `pypilot.dataRefreshDays` | `7` | Refresh interval in days for compatibility data tables (0 disables updates). |
 
 ## Architecture
 
-The extension is a thin TypeScript shim (like the Zed WASM shim). All real logic lives in the native `pypilot` helper binary (Rust), which the extension downloads on first run from GitHub Releases. The helper speaks stdio LSP; this extension is a standard `vscode-languageclient` wrapper around it.
+The extension is a TypeScript client wrapping the native Rust `pypilot` helper binary. On startup, the extension checks PATH for an existing binary and downloads a release if none is found. The helper communicates over standard I/O via the Language Server Protocol.
 
 ```
 pypilot-vscode/
 ├── src/
-│   ├── extension.ts        ← activation, LanguageClient, onboarding
-│   ├── downloader.ts       ← locate / download the helper binary
-│   ├── statusBar.ts        ← status bar item
-│   ├── commands.ts         ← command palette handlers
-│   ├── tasks.ts            ← TaskProvider (pypilot type)
+│   ├── extension.ts        LanguageClient activation and onboarding flow
+│   ├── downloader.ts       Binary resolution and release downloads
+│   ├── statusBar.ts        Editor status bar indicator
+│   ├── commands.ts         Command palette actions
+│   ├── tasks.ts            Workspace task provider
 │   └── webview/
-│       └── reportPanel.ts  ← interactive HTML doctor report
-├── build.ts                ← Bun-native build script
+│       └── reportPanel.ts  Interactive HTML doctor report webview
+├── build.ts                Bun build script
 ├── bunfig.toml
 └── package.json
 ```
 
----
-
 ## Development
 
+Build and package scripts use Bun:
+
 ```bash
-# Install dependencies (uses Bun)
+# Install dependencies
 bun install
 
-# Build once
+# Compile extension
 bun run build
 
-# Watch mode
+# Watch mode during development
 bun run build --watch
 
-# Package as .vsix
+# Build vsix package
 bun run package
 ```
 
----
-
 ## License
 
-AGPLv3 — same as the helper binary. See [LICENSE](../pypilot/LICENSE).
+AGPL-3.0-or-later. See the project repository license for details.
