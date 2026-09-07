@@ -1,7 +1,7 @@
 {
   "name": "pypilot-vscode",
   "displayName": "PyPilot",
-  "description": "Sets up Python environments, resolves version/hardware compatibility, and rescues from dependency hell — no AI, no API keys. Fast because it uses uv under the hood.",
+  "description": "Sets up Python environments, resolves version and hardware compatibility without external AI or API keys.",
   "version": "0.1.0",
   "publisher": "pypilot",
   "engines": {

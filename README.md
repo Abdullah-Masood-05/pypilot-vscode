@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="media/icon.png" width="128" height="128" alt="PyPilot Logo" />
+</p>
+
 # PyPilot for VS Code
 
 PyPilot inspects Python projects, figures out which Python versions your dependencies actually support, and creates a working virtual environment. It resolves driver and CUDA compatibility for PyTorch or TensorFlow, checks package wheels on PyPI, and flags broken imports directly in the editor without external API calls.

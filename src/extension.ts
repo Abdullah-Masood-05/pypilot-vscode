@@ -101,13 +101,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
 
   // Update the status bar once the server is ready.
-  client.onReady().then(() => {
+  // In vscode-languageclient v9, start() returns Promise<void> (not Disposable),
+  // and onReady() was removed. Use start() directly for readiness.
+  client.start().then(() => {
     statusBar?.setStatus("ok");
   }).catch(() => {
     statusBar?.setStatus("error", "LSP failed to start");
   });
 
-  context.subscriptions.push(client.start());
+  context.subscriptions.push({ dispose: () => client?.stop() });
 
   // ── 4. Commands ───────────────────────────────────────────────────────────
   registerCommands(context, client, statusBar);
