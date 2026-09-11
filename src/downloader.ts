@@ -138,7 +138,7 @@ async function probeVersion(
   binPath: string
 ): Promise<[number, number, number] | undefined> {
   try {
-    const { execFileSync } = await import('child_process');
+    const { execFileSync } = require('child_process');
     const out = execFileSync(binPath, ['--version'], { encoding: 'utf8', timeout: 5000 });
     return parseVersion(out.trim());
   } catch {
@@ -173,10 +173,21 @@ function which(name: string): string | undefined {
     const { execFileSync } = require('child_process');
     const cmd = process.platform === 'win32' ? 'where' : 'which';
     const out = execFileSync(cmd, [name], { encoding: 'utf8', timeout: 3000 });
-    return out.trim().split(/\r?\n/)[0] || undefined;
+    const found = out.trim().split(/\r?\n/)[0];
+    if (found) return found;
   } catch {
-    return undefined;
+    // Continue to standard fallback
   }
+
+  // Fallback: check ~/.cargo/bin in case PATH was not inherited by VS Code GUI
+  const homedir = os.homedir();
+  const binName = process.platform === 'win32' ? `${name}.exe` : name;
+  const cargoBin = path.join(homedir, '.cargo', 'bin', binName);
+  if (fs.existsSync(cargoBin)) {
+    return cargoBin;
+  }
+
+  return undefined;
 }
 
 function fetchJson<T>(url: string): Promise<T> {
