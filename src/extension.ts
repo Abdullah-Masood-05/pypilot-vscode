@@ -53,7 +53,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const serverOptions: ServerOptions = {
     command: helperPath,
     args: ["lsp"],
-    transport: TransportKind.stdio,
   };
 
   const clientOptions: LanguageClientOptions = {
@@ -84,8 +83,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // and onReady() was removed. Use start() directly for readiness.
   client.start().then(() => {
     statusBar?.setStatus("ok");
-  }).catch(() => {
+  }).catch((err) => {
+    console.error("PyPilot LSP failed to start:", err);
     statusBar?.setStatus("error", "LSP failed to start");
+    vscode.window.showErrorMessage(`PyPilot LSP failed to start: ${err}`);
   });
 
   context.subscriptions.push({ dispose: () => client?.stop() });
