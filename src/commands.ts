@@ -22,6 +22,7 @@ const CMD_FIX = "pypilot.fixEverything";
 const CMD_DETAILS = "pypilot.showDetails";
 const CMD_INSTALL = "pypilot.installPackage";
 const CMD_RECREATE = "pypilot.recreateWithPython";
+const CMD_INSTALL_UV = "pypilot.installUvGlobally";
 
 export function registerCommands(
   context: vscode.ExtensionContext,
@@ -255,13 +256,26 @@ export function registerCommands(
 
   // ── pypilot.installUv ─────────────────────────────────────────────────────
   r("pypilot.installUv", async () => {
-    try {
-      await client.sendRequest(ExecuteCommandRequest.type, {
-        command: "pypilot.installUv",
-        arguments: [],
-      });
-    } catch (err) {
-      vscode.window.showErrorMessage(`PyPilot: uv install failed. ${err}`);
-    }
+    statusBar.setStatus("checking");
+    await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: "PyPilot",
+        cancellable: false,
+      },
+      async (progress) => {
+        progress.report({ message: "Installing uv globally…" });
+        try {
+          await client.sendRequest(ExecuteCommandRequest.type, {
+            command: CMD_INSTALL_UV,
+            arguments: [],
+          });
+          statusBar.setStatus("ok");
+        } catch (err) {
+          statusBar.setStatus("idle");
+          vscode.window.showErrorMessage(`PyPilot: uv install failed. ${err}`);
+        }
+      }
+    );
   });
 }
