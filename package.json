@@ -2,7 +2,7 @@
   "name": "pypilot-vscode",
   "displayName": "PyPilot",
   "description": "Sets up Python environments, resolves version and hardware compatibility without external AI or API keys.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "license": "Apache-2.0",
   "publisher": "AbdullahMasood-005",
   "engines": {
@@ -80,6 +80,11 @@
         "command": "pypilot.openReport",
         "title": "PyPilot: Open Environment Report Panel",
         "icon": "$(preview)"
+      },
+      {
+        "command": "pypilot.installUv",
+        "title": "PyPilot: Install uv Globally",
+        "icon": "$(cloud-download)"
       }
     ],
     "configuration": {
@@ -87,12 +92,14 @@
       "properties": {
         "pypilot.packageManager": {
           "type": "string",
-          "enum": ["uv", "pip"],
+          "enum": ["auto", "uv", "uv-pip", "pip"],
           "enumDescriptions": [
-            "Use uv (default, fastest). PyPilot manages the uv binary automatically.",
-            "Use pip + python -m venv. Never touches uv. Python must be installed manually."
+            "Auto (default): Uses uv if installed on system PATH, prompts to install if missing, or falls back to pip.",
+            "Use uv project mode (pyproject.toml + uv.lock).",
+            "Use uv-accelerated pip-compatible mode (requirements.txt only via uv venv and uv pip).",
+            "Use standard pip + python -m venv. Never touches uv."
           ],
-          "default": "uv",
+          "default": "auto",
           "description": "Package manager for environment creation and installs.",
           "scope": "resource"
         },

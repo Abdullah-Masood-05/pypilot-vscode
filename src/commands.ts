@@ -252,4 +252,16 @@ export function registerCommands(
     // Delegate to doctor — the LSP server opens the markdown doc itself.
     await vscode.commands.executeCommand("pypilot.doctor");
   });
+
+  // ── pypilot.installUv ─────────────────────────────────────────────────────
+  r("pypilot.installUv", async () => {
+    try {
+      await client.sendRequest(ExecuteCommandRequest.type, {
+        command: "pypilot.installUv",
+        arguments: [],
+      });
+    } catch (err) {
+      vscode.window.showErrorMessage(`PyPilot: uv install failed. ${err}`);
+    }
+  });
 }
