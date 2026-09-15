@@ -6,6 +6,12 @@
  *  1. `pypilot` on $PATH (if the version is new enough)
  *  2. A previously-downloaded binary in the extension's global storage
  *  3. Download the latest release asset from GitHub
+ *
+ * Update checking:
+ *  On every activation the extension compares the local helper version against
+ *  the latest GitHub release tag.  If a newer version is available the user is
+ *  prompted to update.  Managed binaries are replaced in-place; PATH binaries
+ *  offer to download the managed copy so the user's system install is untouched.
  */
 
 import * as fs from 'fs';
@@ -16,6 +22,10 @@ import * as vscode from 'vscode';
 
 const HELPER_REPO = 'Abdullah-Masood-05/pypilot';
 const MIN_VERSION: [number, number, number] = [0, 1, 0];
+
+/** How often (in ms) to suppress the "update available" prompt after the user
+ *  dismisses it.  24 hours keeps it from being annoying.  */
+const UPDATE_SNOOZE_MS = 24 * 60 * 60 * 1000;
 
 export interface HelperInfo {
   path: string;
@@ -30,27 +40,41 @@ export interface HelperInfo {
 export async function ensureHelper(
   context: vscode.ExtensionContext
 ): Promise<HelperInfo> {
+  // Probe both PATH and managed locations, then pick the best one.
+  let pathInfo: HelperInfo | undefined;
+  let managedInfo: HelperInfo | undefined;
+
   // 1. Check PATH.
   const onPath = which('pypilot');
   if (onPath) {
     const ver = await probeVersion(onPath);
     if (ver && compareVersions(ver, MIN_VERSION) >= 0) {
-      return { path: onPath, version: fmtVersion(ver), managed: false };
+      pathInfo = { path: onPath, version: fmtVersion(ver), managed: false };
     }
   }
 
-  // 2. Reuse a previously-downloaded binary.
-  const managed = managedPath(context);
+  // 2. Check previously-downloaded managed binary.
+  const managed = managedBinPath(context);
   if (managed && fs.existsSync(managed)) {
     const ver = await probeVersion(managed);
     if (ver && compareVersions(ver, MIN_VERSION) >= 0) {
-      return { path: managed, version: fmtVersion(ver), managed: true };
+      managedInfo = { path: managed, version: fmtVersion(ver), managed: true };
+    } else {
+      // Stale binary — remove it so a re-download can happen.
+      fs.rmSync(managed, { force: true });
     }
-    // Stale binary — fall through to re-download.
-    fs.rmSync(managed, { force: true });
   }
 
-  // 3. Download.
+  // 3. Pick the newer of the two, if both exist.
+  if (pathInfo && managedInfo) {
+    const pathVer = parseVersion(`pypilot ${pathInfo.version}`)!;
+    const managedVer = parseVersion(`pypilot ${managedInfo.version}`)!;
+    return compareVersions(managedVer, pathVer) >= 0 ? managedInfo : pathInfo;
+  }
+  if (pathInfo) return pathInfo;
+  if (managedInfo) return managedInfo;
+
+  // 4. Neither exists — download.
   return vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
@@ -59,7 +83,7 @@ export async function ensureHelper(
     },
     async (progress) => {
       progress.report({ message: 'Downloading helper binary…' });
-      const binPath = await downloadHelper(context);
+      const binPath = await downloadLatestHelper(context);
       const ver = await probeVersion(binPath);
       return {
         path: binPath,
@@ -70,15 +94,115 @@ export async function ensureHelper(
   );
 }
 
+// ---------------------------------------------------------------------------
+// Update checker
+// ---------------------------------------------------------------------------
+
+/**
+ * Compare the currently-resolved helper against the latest GitHub release.
+ * If an update is available, prompt the user.  Call this *after* the extension
+ * has finished activating so it never blocks startup.
+ */
+export async function checkForHelperUpdate(
+  context: vscode.ExtensionContext,
+  current: HelperInfo
+): Promise<void> {
+  // Honour a snooze — don't nag every single activation.
+  const lastDismissed = context.globalState.get<number>('pypilot.updateDismissedAt', 0);
+  if (Date.now() - lastDismissed < UPDATE_SNOOZE_MS) {
+    return;
+  }
+
+  let release: GithubRelease;
+  try {
+    release = await fetchJson<GithubRelease>(
+      `https://api.github.com/repos/${HELPER_REPO}/releases/latest`
+    );
+  } catch {
+    // Network offline — silently skip.
+    return;
+  }
+
+  const remoteVer = parseVersion(release.tag_name.replace(/^v/, 'pypilot '));
+  if (!remoteVer) return;
+
+  const localVer = parseVersion(`pypilot ${current.version}`);
+  if (!localVer) return;
+
+  if (compareVersions(remoteVer, localVer) <= 0) {
+    // Already up to date.
+    return;
+  }
+
+  const remoteStr = fmtVersion(remoteVer);
+
+  const choice = await vscode.window.showInformationMessage(
+    `PyPilot: helper update available (${current.version} → ${remoteStr}).`,
+    'Update now',
+    'Release notes',
+    'Later'
+  );
+
+  if (choice === 'Update now') {
+    await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: 'PyPilot',
+        cancellable: false,
+      },
+      async (progress) => {
+        progress.report({ message: `Updating helper to v${remoteStr}…` });
+
+        if (current.managed) {
+          // Replace the managed binary in-place.
+          const binPath = await downloadLatestHelper(context);
+          const ver = await probeVersion(binPath);
+          vscode.window.showInformationMessage(
+            `PyPilot: helper updated to v${ver ? fmtVersion(ver) : remoteStr}. Reload the window to use the new version.`
+          );
+        } else {
+          // PATH binary — download a managed copy instead of touching the
+          // user's system install.  On next activation the managed copy
+          // (which is newer) should win the version comparison, but since
+          // PATH is checked first and it's still old, we need to update the
+          // managed copy and tell the user to reload.
+          const binPath = await downloadLatestHelper(context);
+          const ver = await probeVersion(binPath);
+          vscode.window.showInformationMessage(
+            `PyPilot: downloaded v${ver ? fmtVersion(ver) : remoteStr} to managed storage. ` +
+            `Your PATH binary (${current.path}) was not modified. Reload the window to pick up the update.`
+          );
+        }
+      }
+    );
+
+    // Prompt to reload so the LSP restarts with the new binary.
+    const reload = await vscode.window.showInformationMessage(
+      'PyPilot: Reload window to use the updated helper?',
+      'Reload'
+    );
+    if (reload === 'Reload') {
+      vscode.commands.executeCommand('workbench.action.reloadWindow');
+    }
+  } else if (choice === 'Release notes') {
+    vscode.env.openExternal(
+      vscode.Uri.parse(`https://github.com/${HELPER_REPO}/releases/latest`)
+    );
+  } else {
+    // "Later" or dismissed — snooze for 24h.
+    await context.globalState.update('pypilot.updateDismissedAt', Date.now());
+  }
+}
+
 // --- internals ---------------------------------------------------------------
 
-function managedPath(context: vscode.ExtensionContext): string | undefined {
+function managedBinPath(context: vscode.ExtensionContext): string | undefined {
   const dir = context.globalStorageUri.fsPath;
   const name = process.platform === 'win32' ? 'pypilot.exe' : 'pypilot';
   return path.join(dir, 'bin', name);
 }
 
-async function downloadHelper(
+async function downloadLatestHelper(
   context: vscode.ExtensionContext
 ): Promise<string> {
   const asset = assetForPlatform();
@@ -199,6 +323,11 @@ function fetchJson<T>(url: string): Promise<T> {
       },
     };
     https.get(url, options, (res) => {
+      // Follow redirects (GitHub API can redirect).
+      if (res.statusCode === 301 || res.statusCode === 302) {
+        fetchJson<T>(res.headers.location!).then(resolve, reject);
+        return;
+      }
       let body = '';
       res.on('data', (d) => (body += d));
       res.on('end', () => {

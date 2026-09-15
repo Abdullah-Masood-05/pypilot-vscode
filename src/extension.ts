@@ -21,7 +21,7 @@ import {
   TransportKind,
 } from "vscode-languageclient/node";
 
-import { ensureHelper } from "./downloader";
+import { ensureHelper, checkForHelperUpdate } from "./downloader";
 import { PyPilotStatusBar } from "./statusBar";
 import { registerCommands } from "./commands";
 import { PyPilotTaskProvider } from "./tasks";
@@ -33,16 +33,25 @@ let statusBar: PyPilotStatusBar | undefined;
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   // ── 1. Resolve the helper binary ─────────────────────────────────────────
   let helperPath: string;
+  let helperInfo: Awaited<ReturnType<typeof ensureHelper>> | undefined;
   try {
-    const info = await ensureHelper(context);
-    helperPath = info.path;
-    console.log(`PyPilot: using helper ${info.path} v${info.version} (managed=${info.managed})`);
+    helperInfo = await ensureHelper(context);
+    helperPath = helperInfo.path;
+    console.log(`PyPilot: using helper ${helperInfo.path} v${helperInfo.version} (managed=${helperInfo.managed})`);
   } catch (err) {
     vscode.window.showErrorMessage(
       `PyPilot: could not locate the helper binary. ${err}\n` +
         "Install `pypilot` manually and ensure it is on your PATH, or check your internet connection."
     );
     return;
+  }
+
+  // ── 1b. Background update check (non-blocking) ───────────────────────────
+  // Runs after activation so it never delays startup.
+  if (helperInfo) {
+    checkForHelperUpdate(context, helperInfo).catch((err) => {
+      console.warn(`PyPilot: update check failed (non-fatal): ${err}`);
+    });
   }
 
   // ── 2. Status bar ─────────────────────────────────────────────────────────

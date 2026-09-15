@@ -16,6 +16,7 @@ import {
   ExecuteCommandRequest,
 } from "vscode-languageclient/node";
 import { PyPilotStatusBar } from "./statusBar";
+import { checkForHelperUpdate, ensureHelper } from "./downloader";
 
 // Must match the command IDs registered in the LSP server (lsp/mod.rs).
 const CMD_FIX = "pypilot.fixEverything";
@@ -277,5 +278,17 @@ export function registerCommands(
         }
       }
     );
+  });
+
+  // ── pypilot.updateHelper ──────────────────────────────────────────────────
+  r("pypilot.updateHelper", async () => {
+    // Clear the snooze so the check always runs when manually invoked.
+    await context.globalState.update("pypilot.updateDismissedAt", 0);
+    try {
+      const info = await ensureHelper(context);
+      await checkForHelperUpdate(context, info);
+    } catch (err) {
+      vscode.window.showErrorMessage(`PyPilot: update check failed. ${err}`);
+    }
   });
 }
